@@ -90,6 +90,7 @@ public class InAppWebViewSettings: ISettings<InAppWebView> {
     var javaScriptBridgeForMainFrameOnly = false
     var pluginScriptsOriginAllowList: [String]? = nil
     var pluginScriptsForMainFrameOnly = false
+    var sslPinningByHost: [String: [String]] = [:]
     var isUserInteractionEnabled = true
     var alpha: Double? = nil
     
@@ -113,6 +114,22 @@ public class InAppWebViewSettings: ISettings<InAppWebView> {
             alpha = alphaValue
             settings.removeValue(forKey: "alpha")
         }
+        if let sslPinningByHostMap = settings["sslPinningByHost"] as? [String: Any] {
+            var normalizedPinningByHost: [String: [String]] = [:]
+            for (host, fingerprintsValue) in sslPinningByHostMap {
+                guard let fingerprints = fingerprintsValue as? [String] else {
+                    continue
+                }
+                let normalizedFingerprints = fingerprints
+                    .map { $0.lowercased().replacingOccurrences(of: ":", with: "") }
+                    .filter { !$0.isEmpty }
+                if !normalizedFingerprints.isEmpty {
+                    normalizedPinningByHost[host.lowercased()] = normalizedFingerprints
+                }
+            }
+            sslPinningByHost = normalizedPinningByHost
+            settings.removeValue(forKey: "sslPinningByHost")
+        }
         let _ = super.parse(settings: settings)
         if #available(iOS 13.0, *) {} else {
             applePayAPIEnabled = false
@@ -125,6 +142,7 @@ public class InAppWebViewSettings: ISettings<InAppWebView> {
         if let webView = obj {
             realSettings["isUserInteractionEnabled"] = webView.isUserInteractionEnabled
             realSettings["alpha"] = Double(webView.alpha)
+            realSettings["sslPinningByHost"] = self.sslPinningByHost
             let configuration = webView.configuration
             if #available(iOS 9.0, *) {
                 realSettings["userAgent"] = webView.customUserAgent

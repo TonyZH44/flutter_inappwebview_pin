@@ -7,6 +7,7 @@
 
 import Flutter
 import Foundation
+import CommonCrypto
 @preconcurrency import WebKit
 
 public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
@@ -2183,6 +2184,12 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                 return
             }
             
+            if let isPinnedCertificateValid = isPinnedServerTrustValid(challenge: challenge, serverTrust: serverTrust),
+               !isPinnedCertificateValid {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+            
             if let scheme = challenge.protectionSpace.protocol, scheme == "https" {
                 // workaround for ProtectionSpace SSL Certificate
                 // https://github.com/pichillilorenzo/flutter_inappwebview/issues/1678
@@ -2724,6 +2731,31 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
     
     public func webViewDidClose(_ webView: WKWebView) {
         channelDelegate?.onCloseWindow()
+    }
+    
+    // Returns nil if the host has no configured pins.
+    // Returns true/false when pinning is configured for the host.
+    private func isPinnedServerTrustValid(challenge: URLAuthenticationChallenge, serverTrust: SecTrust) -> Bool? {
+        let host = challenge.protectionSpace.host.lowercased()
+        guard let allowedFingerprints = settings?.sslPinningByHost[host], !allowedFingerprints.isEmpty else {
+            return nil
+        }
+        
+        guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
+            return false
+        }
+        
+        let certData = SecCertificateCopyData(certificate) as Data
+        let fingerprint = sha256Hex(data: certData)
+        return allowedFingerprints.contains(fingerprint)
+    }
+    
+    private func sha256Hex(data: Data) -> String {
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes { buffer in
+            _ = CC_SHA256(buffer.baseAddress, CC_LONG(data.count), &hash)
+        }
+        return hash.map { String(format: "%02x", $0) }.joined()
     }
     
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

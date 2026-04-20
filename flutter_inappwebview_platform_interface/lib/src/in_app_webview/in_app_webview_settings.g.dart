@@ -129,6 +129,18 @@ class InAppWebViewSettings {
   ///- iOS WKWebView
   ///- macOS WKWebView
   WebUri? allowingReadAccessTo;
+  
+  ///Map of lower/upper-case hostnames to allowed leaf certificate SHA-256 fingerprints.
+  ///
+  ///Each fingerprint can be provided as lowercase/uppercase hex with or without `:` separators.
+  ///At runtime on iOS, fingerprints are normalized to lowercase hex without separators.
+  ///
+  ///When at least one fingerprint is configured for a host, TLS server trust is accepted only if
+  ///the server leaf certificate fingerprint matches one of the configured values.
+  ///
+  ///**Officially Supported Platforms/Implementations**:
+  ///- iOS WKWebView
+  Map<String, List<String>>? sslPinningByHost;
 
   ///Set to `true` to allow AirPlay. The default value is `true`.
   ///
@@ -2133,6 +2145,7 @@ class InAppWebViewSettings {
     this.useOnNavigationResponse,
     this.applePayAPIEnabled = false,
     this.allowingReadAccessTo,
+    this.sslPinningByHost,
     this.disableLongPressContextMenuOnLinks = false,
     this.disableInputAccessoryView = false,
     this.underPageBackgroundColor,
@@ -2248,6 +2261,16 @@ class InAppWebViewSettings {
     final instance = InAppWebViewSettings(
       allowingReadAccessTo: map['allowingReadAccessTo'] != null
           ? WebUri(map['allowingReadAccessTo'])
+          : null,
+      sslPinningByHost: map['sslPinningByHost'] != null
+          ? Map<String, List<String>>.from(
+              (map['sslPinningByHost'] as Map).map(
+                (k, v) => MapEntry(
+                  k as String,
+                  List<String>.from((v as List).cast<String>()),
+                ),
+              ),
+            )
           : null,
       alpha: map['alpha'],
       appCachePath: map['appCachePath'],
@@ -2708,6 +2731,9 @@ class InAppWebViewSettings {
       "allowTopNavigationToDataUrls": allowTopNavigationToDataUrls,
       "allowUniversalAccessFromFileURLs": allowUniversalAccessFromFileURLs,
       "allowingReadAccessTo": allowingReadAccessTo?.toString(),
+      "sslPinningByHost": sslPinningByHost?.map(
+        (key, value) => MapEntry(key, value.toList()),
+      ),
       "allowsAirPlayForMediaPlayback": allowsAirPlayForMediaPlayback,
       "allowsBackForwardNavigationGestures":
           allowsBackForwardNavigationGestures,

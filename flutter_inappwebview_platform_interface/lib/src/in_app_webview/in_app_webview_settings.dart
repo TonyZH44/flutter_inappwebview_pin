@@ -1923,6 +1923,16 @@ as it can cause framerate drops on animations in Android 9 and lower (see [Hybri
   ///Specify a directory to give WebView permission to read additional files in the specified directory.
   @SupportedPlatforms(platforms: [IOSPlatform(), MacOSPlatform()])
   WebUri? allowingReadAccessTo;
+  
+  ///Map of lower/upper-case hostnames to allowed leaf certificate SHA-256 fingerprints.
+  ///
+  ///Each fingerprint can be provided as lowercase/uppercase hex with or without `:` separators.
+  ///At runtime on iOS, fingerprints are normalized to lowercase hex without separators.
+  ///
+  ///When at least one fingerprint is configured for a host, TLS server trust is accepted only if
+  ///the server leaf certificate fingerprint matches one of the configured values.
+  @SupportedPlatforms(platforms: [IOSPlatform()])
+  Map<String, List<String>>? sslPinningByHost;
 
   ///Set to `true` to disable the context menu (copy, select, etc.) that is shown when the user emits a long press event on a HTML link.
   ///This is implemented using also JavaScript, so it must be enabled or it won't work.
