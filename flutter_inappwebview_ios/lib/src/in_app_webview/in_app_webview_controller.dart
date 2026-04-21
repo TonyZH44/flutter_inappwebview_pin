@@ -1035,17 +1035,29 @@ class IOSInAppWebViewController extends PlatformInAppWebViewController
           ServerTrustChallenge challenge = ServerTrustChallenge.fromMap(
             arguments,
           )!;
+          final host = challenge.protectionSpace.host;
+          developer.log(
+            "SSL Pinning (Dart): received server trust challenge for host=$host",
+            name: "InAppWebView iOS",
+          );
 
+          ServerTrustAuthResponse? response;
           if (webviewParams != null &&
-              webviewParams!.onReceivedServerTrustAuthRequest != null)
-            return (await webviewParams!.onReceivedServerTrustAuthRequest!(
+              webviewParams!.onReceivedServerTrustAuthRequest != null) {
+            response = await webviewParams!.onReceivedServerTrustAuthRequest!(
               _controllerFromPlatform,
               challenge,
-            ))?.toMap();
-          else
-            return (await _inAppBrowserEventHandler!
-                    .onReceivedServerTrustAuthRequest(challenge))
-                ?.toMap();
+            );
+          } else {
+            response = await _inAppBrowserEventHandler!
+                .onReceivedServerTrustAuthRequest(challenge);
+          }
+
+          developer.log(
+            "SSL Pinning (Dart): host=$host, responseAction=${response?.action?.toNativeValue()}",
+            name: "InAppWebView iOS",
+          );
+          return response?.toMap();
         }
         break;
       case "onReceivedClientCertRequest":
