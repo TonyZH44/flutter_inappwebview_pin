@@ -2186,9 +2186,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
             
             if let isPinnedCertificateValid = isPinnedServerTrustValid(challenge: challenge, serverTrust: serverTrust),
                !isPinnedCertificateValid {
-                #if DEBUG
                 print("SSL Pinning: challenge cancelled due to pin mismatch for host \(challenge.protectionSpace.host.lowercased()).")
-                #endif
                 completionHandler(.cancelAuthenticationChallenge, nil)
                 return
             }
@@ -2741,20 +2739,14 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
     private func isPinnedServerTrustValid(challenge: URLAuthenticationChallenge, serverTrust: SecTrust) -> Bool? {
         let host = challenge.protectionSpace.host.lowercased()
         guard let allowedFingerprints = settings?.sslPinningByHost[host], !allowedFingerprints.isEmpty else {
-            #if DEBUG
             print("SSL Pinning: no pins configured for host \(host).")
-            #endif
             return nil
         }
         
-        #if DEBUG
         print("SSL Pinning: validating host \(host) with \(allowedFingerprints.count) configured pin(s).")
-        #endif
         
         guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
-            #if DEBUG
             print("SSL Pinning: failed to read leaf certificate for host \(host).")
-            #endif
             return false
         }
         
@@ -2762,9 +2754,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
         let fingerprint = sha256Hex(data: certData)
         let isMatch = allowedFingerprints.contains(fingerprint)
         
-        #if DEBUG
         print("SSL Pinning: host \(host), computed fingerprint \(fingerprint), match=\(isMatch).")
-        #endif
         
         return isMatch
     }
