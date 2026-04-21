@@ -2186,7 +2186,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
             
             if let isPinnedCertificateValid = isPinnedServerTrustValid(challenge: challenge, serverTrust: serverTrust),
                !isPinnedCertificateValid {
-                print("SSL Pinning: challenge cancelled due to pin mismatch for host \(challenge.protectionSpace.host.lowercased()).")
+                NSLog("SSL Pinning: challenge cancelled due to pin mismatch for host %@", challenge.protectionSpace.host.lowercased())
                 completionHandler(.cancelAuthenticationChallenge, nil)
                 return
             }
@@ -2739,14 +2739,14 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
     private func isPinnedServerTrustValid(challenge: URLAuthenticationChallenge, serverTrust: SecTrust) -> Bool? {
         let host = challenge.protectionSpace.host.lowercased()
         guard let allowedFingerprints = settings?.sslPinningByHost[host], !allowedFingerprints.isEmpty else {
-            print("SSL Pinning: no pins configured for host \(host).")
+            NSLog("SSL Pinning: no pins configured for host %@", host)
             return nil
         }
         
-        print("SSL Pinning: validating host \(host) with \(allowedFingerprints.count) configured pin(s).")
+        NSLog("SSL Pinning: validating host %@ with %d configured pin(s).", host, allowedFingerprints.count)
         
         guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
-            print("SSL Pinning: failed to read leaf certificate for host \(host).")
+            NSLog("SSL Pinning: failed to read leaf certificate for host %@", host)
             return false
         }
         
@@ -2754,7 +2754,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
         let fingerprint = sha256Hex(data: certData)
         let isMatch = allowedFingerprints.contains(fingerprint)
         
-        print("SSL Pinning: host \(host), computed fingerprint \(fingerprint), match=\(isMatch).")
+        NSLog("SSL Pinning: host %@, computed fingerprint %@, match=%@", host, fingerprint, String(isMatch))
         
         return isMatch
     }
