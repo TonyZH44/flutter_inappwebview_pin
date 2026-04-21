@@ -8,6 +8,7 @@
 import Flutter
 import Foundation
 import CommonCrypto
+import Security
 @preconcurrency import WebKit
 
 public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
@@ -2183,6 +2184,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                 completionHandler(.performDefaultHandling, nil)
                 return
             }
+            logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "challenge_received")
             
             if let isPinnedCertificateValid = isPinnedServerTrustValid(challenge: challenge, serverTrust: serverTrust),
                !isPinnedCertificateValid {
@@ -2210,6 +2212,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                     switch action {
                         case 0:
                             InAppWebView.credentialsProposed = []
+                            self.logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "dart_action_cancel")
                             completionHandler(.cancelAuthenticationChallenge, nil)
                             break
                         case 1:
@@ -2217,6 +2220,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                             DispatchQueue.global().async {
                                 let exceptions = SecTrustCopyExceptions(serverTrust)
                                 SecTrustSetExceptions(serverTrust, exceptions)
+                                self.logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "dart_action_proceed_after_exceptions")
                                 let credential = URLCredential(trust: serverTrust)
                                 completionHandler(.useCredential, credential)
                             }
@@ -2765,6 +2769,62 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
             _ = CC_SHA256(buffer.baseAddress, CC_LONG(data.count), &hash)
         }
         return hash.map { String(format: "%02x", $0) }.joined()
+    }
+    
+    private func logServerTrustDiagnostics(challenge: URLAuthenticationChallenge, serverTrust: SecTrust, phase: String) {
+        let host = challenge.protectionSpace.host.lowercased()
+        let port = challenge.protectionSpace.port
+        let scheme = challenge.protectionSpace.protocol ?? "unknown"
+        let authMethod = challenge.protectionSpace.authenticationMethod
+        
+        var trustError: CFError?
+        let trustResult = SecTrustEvaluateWithError(serverTrust, &trustError)
+        let trustErrorDescription = (trustError as Error?)?.localizedDescription ?? "none"
+        let trustErrorCode = trustError.map { CFErrorGetCode($0) } ?? 0
+        let trustErrorDomain = trustError.map { CFErrorGetDomain($0) as String } ?? "none"
+        
+        let certCount = SecTrustGetCertificateCount(serverTrust)
+        var certSummaries: [String] = []
+        for index in 0..<certCount {
+            guard let cert = SecTrustGetCertificateAtIndex(serverTrust, index) else {
+                certSummaries.append("index=\(index), unavailable=true")
+                continue
+            }
+            let certData = SecCertificateCopyData(cert) as Data
+            let fingerprint = sha256Hex(data: certData)
+            let subject = SecCertificateCopySubjectSummary(cert) as String? ?? "unknown"
+            certSummaries.append("index=\(index), subject=\(subject), derBytes=\(certData.count), sha256=\(fingerprint)")
+        }
+        
+        let diagnosticsArguments: [String: Any?] = [
+            "phase": phase,
+            "host": host,
+            "scheme": scheme,
+            "port": port,
+            "authMethod": authMethod,
+            "trustResult": trustResult,
+            "trustErrorDomain": trustErrorDomain,
+            "trustErrorCode": trustErrorCode,
+            "trustErrorDescription": trustErrorDescription,
+            "certCount": certCount,
+            "certSummaries": certSummaries
+        ]
+        channelDelegate?.onReceivedServerTrustDiagnostics(arguments: diagnosticsArguments)
+        
+        NSLog(
+            "SSL Trust Diagnostics [%@]: host=%@, scheme=%@, port=%d, authMethod=%@, trustResult=%@, trustErrorDomain=%@, trustErrorCode=%ld, trustErrorDescription=%@, certCount=%d, certs=[%@]",
+            phase,
+            host,
+            scheme,
+            port,
+            authMethod,
+            String(trustResult),
+            trustErrorDomain,
+            trustErrorCode,
+            trustErrorDescription,
+            certCount,
+            certSummaries.joined(separator: " | ")
+        )
     }
     
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

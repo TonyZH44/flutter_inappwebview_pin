@@ -1042,6 +1042,15 @@ public class WebViewChannelDelegate: ChannelDelegate {
         }
     }
     
+    public func onReceivedServerTrustDiagnostics(arguments: [String: Any?]) {
+        if channel == nil {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.channel?.invokeMethod("onReceivedServerTrustDiagnostics", arguments: arguments)
+        }
+    }
+    
     public class ReceivedClientCertRequestCallback: BaseCallbackResult<ClientCertResponse> {
         override init() {
             super.init()

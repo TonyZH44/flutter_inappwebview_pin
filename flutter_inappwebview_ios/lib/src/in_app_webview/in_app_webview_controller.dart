@@ -1060,6 +1060,25 @@ class IOSInAppWebViewController extends PlatformInAppWebViewController
           return response?.toMap();
         }
         break;
+      case "onReceivedServerTrustDiagnostics":
+        Map<String, dynamic> arguments = call.arguments.cast<String, dynamic>();
+        final phase = arguments["phase"];
+        final host = arguments["host"];
+        final scheme = arguments["scheme"];
+        final port = arguments["port"];
+        final authMethod = arguments["authMethod"];
+        final trustResult = arguments["trustResult"];
+        final trustErrorDomain = arguments["trustErrorDomain"];
+        final trustErrorCode = arguments["trustErrorCode"];
+        final trustErrorDescription = arguments["trustErrorDescription"];
+        final certCount = arguments["certCount"];
+        final certSummaries =
+            (arguments["certSummaries"] as List?)?.join(" | ") ?? "";
+        developer.log(
+          "SSL Trust Diagnostics (Dart Bridge): phase=$phase, host=$host, scheme=$scheme, port=$port, authMethod=$authMethod, trustResult=$trustResult, trustErrorDomain=$trustErrorDomain, trustErrorCode=$trustErrorCode, trustErrorDescription=$trustErrorDescription, certCount=$certCount, certs=[$certSummaries]",
+          name: "InAppWebView iOS",
+        );
+        break;
       case "onReceivedClientCertRequest":
         if ((webviewParams != null &&
                 webviewParams!.onReceivedClientCertRequest != null) ||
