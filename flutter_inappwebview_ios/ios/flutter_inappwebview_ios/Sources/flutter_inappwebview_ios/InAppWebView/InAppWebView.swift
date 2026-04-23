@@ -37,6 +37,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
     
     private static var sslCertificatesMap: [String: SslCertificate] = [:] // [URL host name : SslCertificate]
     private static var credentialsProposed: [URLCredential] = []
+    private var allowedFingerprints: [String] = []
     
     var lastScrollX: CGFloat = 0
     var lastScrollY: CGFloat = 0
@@ -2742,12 +2743,19 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
     // Returns true/false when pinning is configured for the host.
     private func isPinnedServerTrustValid(challenge: URLAuthenticationChallenge, serverTrust: SecTrust) -> Bool? {
         let host = challenge.protectionSpace.host.lowercased()
-        guard let allowedFingerprints = settings?.sslPinningByHost[host], !allowedFingerprints.isEmpty else {
+        let configuredPinsByHost = settings?.sslPinningByHost[host] ?? []
+        let runtimePins = self.allowedFingerprints
+        let activePins = !runtimePins.isEmpty ? runtimePins : configuredPinsByHost
+        guard !activePins.isEmpty else {
             NSLog("SSL Pinning: no pins configured for host %@", host)
             return nil
         }
         
-        NSLog("SSL Pinning: validating host %@ with %d configured pin(s).", host, allowedFingerprints.count)
+        if !runtimePins.isEmpty {
+            NSLog("SSL Pinning: validating host %@ with %d runtime pin(s) set via setSSLPins.", host, runtimePins.count)
+        } else {
+            NSLog("SSL Pinning: validating host %@ with %d configured pin(s).", host, configuredPinsByHost.count)
+        }
         
         guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
             NSLog("SSL Pinning: failed to read leaf certificate for host %@", host)
@@ -2756,11 +2764,18 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
         
         let certData = SecCertificateCopyData(certificate) as Data
         let fingerprint = sha256Hex(data: certData)
-        let isMatch = allowedFingerprints.contains(fingerprint)
+        let isMatch = activePins.contains(fingerprint)
         
         NSLog("SSL Pinning: host %@, computed fingerprint %@, match=%@", host, fingerprint, String(isMatch))
         
         return isMatch
+    }
+    
+    public func setSSLPins(pins: [String]) {
+        self.allowedFingerprints = pins
+            .map { $0.lowercased().replacingOccurrences(of: ":", with: "") }
+            .filter { !$0.isEmpty }
+        NSLog("SSL Pinning: setSSLPins called, runtime pin count=%d", self.allowedFingerprints.count)
     }
     
     private func sha256Hex(data: Data) -> String {

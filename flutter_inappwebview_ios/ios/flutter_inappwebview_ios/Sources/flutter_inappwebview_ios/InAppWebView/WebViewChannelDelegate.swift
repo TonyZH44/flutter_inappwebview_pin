@@ -173,6 +173,11 @@ public class WebViewChannelDelegate: ChannelDelegate {
             }
             result(true)
             break
+        case .setSSLPins:
+            let pins = arguments!["pins"] as? [String] ?? []
+            webView?.setSSLPins(pins: pins)
+            result(true)
+            break
         case .getSettings:
             if let iabController = webView?.inAppBrowserDelegate as? InAppBrowserWebViewController {
                 result(iabController.getSettings())

@@ -2362,6 +2362,16 @@ class IOSInAppWebViewController extends PlatformInAppWebViewController
     args.putIfAbsent('settings', () => settings.toMap());
     await channel?.invokeMethod('setSettings', args);
   }
+  
+  ///Sets runtime SSL pins (SHA-256 of DER leaf certificate) for iOS.
+  ///
+  ///Pins are normalized to lowercase and `:` is removed on native side.
+  ///If empty, runtime pins are cleared and host-based `sslPinningByHost` settings are used.
+  Future<void> setSSLPins({required List<String> pins}) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('pins', () => pins);
+    await channel?.invokeMethod('setSSLPins', args);
+  }
 
   @override
   Future<InAppWebViewSettings?> getSettings() async {
