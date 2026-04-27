@@ -2218,11 +2218,11 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                             break
                         case 1:
                             // workaround for https://github.com/pichillilorenzo/flutter_inappwebview/issues/1924
-                            DispatchQueue.global().async {
-                                let exceptions = SecTrustCopyExceptions(serverTrust)
-                                SecTrustSetExceptions(serverTrust, exceptions)
-                                self.logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "dart_action_proceed_after_exceptions")
-                                let credential = URLCredential(trust: serverTrust)
+                            let exceptions = SecTrustCopyExceptions(serverTrust)
+                            SecTrustSetExceptions(serverTrust, exceptions)
+                            self.logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "dart_action_proceed_after_exceptions")
+                            let credential = URLCredential(trust: serverTrust)
+                            DispatchQueue.main.async {
                                 completionHandler(.useCredential, credential)
                             }
                             break
