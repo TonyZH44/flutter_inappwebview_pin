@@ -2222,9 +2222,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate,
                             SecTrustSetExceptions(serverTrust, exceptions)
                             self.logServerTrustDiagnostics(challenge: challenge, serverTrust: serverTrust, phase: "dart_action_proceed_after_exceptions")
                             let credential = URLCredential(trust: serverTrust)
-                            DispatchQueue.main.async {
-                                completionHandler(.useCredential, credential)
-                            }
+                            completionHandler(.useCredential, credential)
                             break
                         default:
                             InAppWebView.credentialsProposed = []
